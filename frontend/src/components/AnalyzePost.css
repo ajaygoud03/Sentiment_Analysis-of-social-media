@@ -1,0 +1,35 @@
+.input-group {
+    display: flex;
+    gap: 10px;
+}
+
+.input-group input {
+    flex-grow: 1;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 12px 15px;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 2px var(--light-blue);
+}
+
+.input-group button {
+    border: none;
+    background-color: var(--primary-blue);
+    color: var(--white);
+    padding: 12px 20px;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.input-group button:hover {
+    background-color: #0041a3;
+}
