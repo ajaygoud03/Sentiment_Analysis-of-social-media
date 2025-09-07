@@ -1,5 +1,14 @@
-Flask
+# Web framework
+flask
 flask-cors
+gunicorn
+
+# Environment variables
+python-dotenv
+
+# AI/NLP
 transformers
 torch
-gunicorn
+
+# Utilities
+requests
