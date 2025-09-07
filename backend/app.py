@@ -13,16 +13,16 @@ app = Flask(__name__)
 # Allow frontend (localhost in dev, Netlify in prod)
 CORS(app, resources={r"/*": {"origins": [
     "http://localhost:3000",
-    "https://your-netlify-site.netlify.app"  # replace with your Netlify site
+    "https://your-netlify-site.netlify.app"  # replace with your Netlify site URL
 ]}})
 
 # --- Bearer Token from .env ---
 X_BEARER_TOKEN = os.getenv("X_BEARER_TOKEN")
 
 if not X_BEARER_TOKEN:
-    raise ValueError("❌ Missing X_BEARER_TOKEN in .env file!")
+    raise ValueError("❌ Missing X_BEARER_TOKEN in environment!")
 
-# --- Load mBERT Model ---
+# --- Load mBERT Model (local folder) ---
 try:
     MODEL_PATH = os.path.join(os.path.dirname(__file__), "mbert-sentiment-best")
     sentiment_pipeline = pipeline("sentiment-analysis", model=MODEL_PATH, tokenizer=MODEL_PATH)
@@ -35,9 +35,6 @@ except Exception as e:
 # --- 1. Fetch Trending Posts ---
 @app.route("/api/trending", methods=["GET"])
 def get_trending_posts():
-    if not X_BEARER_TOKEN:
-        return jsonify({"error": "X API Bearer Token not configured"}), 500
-
     url = (
         "https://api.twitter.com/2/tweets/search/recent"
         "?query=(%23news OR %23breaking) lang:en -is:retweet"
@@ -96,7 +93,7 @@ def fetch_and_analyze():
         result = sentiment_pipeline(text)
         prediction = result[0]
         label_map = {"LABEL_0": "Negative", "LABEL_1": "Neutral", "LABEL_2": "Positive"}
-        sentiment = label_map.get(prediction["label"], "Unknown")
+        sentiment = label_map.get(prediction["label"], prediction["label"])
         score = prediction["score"]
 
         return jsonify({"postText": text, "sentiment": sentiment, "score": score})
@@ -104,5 +101,9 @@ def fetch_and_analyze():
         return jsonify({"error": f"Analysis error: {e}"}), 500
 
 
+import os
+
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    port = int(os.environ.get("PORT", 5000))  # 5000 is default for local testing
+    app.run(host="0.0.0.0", port=port)
+
