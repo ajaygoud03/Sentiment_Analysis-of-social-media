@@ -4,3 +4,7 @@ echo "frontend/build/" >> .gitignore
 echo "*.pyc" >> .gitignore
 echo "__pycache__/" >> .gitignore
 echo ".env" >> .gitignore
+backend/mbert-sentiment-best/
+*.safetensors
+*.bin
+*.zip
