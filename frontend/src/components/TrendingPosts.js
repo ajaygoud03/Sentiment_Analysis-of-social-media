@@ -14,7 +14,7 @@ const TrendingPosts = () => {
 
         try {
             // ✅ Always use backend URL from .env
-            const apiBase = process.env.REACT_APP_BACKEND_URL || "http://127.0.0.1:5001";
+            const apiBase = process.env.REACT_APP_BACKEND_URL || "http://127.0.0.1:5000";
             const response = await axios.get(`${apiBase}/api/trending`);
             setTrends(response.data);
             setLastUpdated(new Date());
