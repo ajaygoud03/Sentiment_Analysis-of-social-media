@@ -1,10 +1,54 @@
-echo "backend/.venv/" >> .gitignore
-echo "frontend/node_modules/" >> .gitignore
-echo "frontend/build/" >> .gitignore
-echo "*.pyc" >> .gitignore
-echo "__pycache__/" >> .gitignore
-echo ".env" >> .gitignore
+# -----------------------------
+# Python / Backend
+# -----------------------------
+# Virtual environments
+backend/.venv/
+venv/
+env/
+ENV/
+
+# Python cache
+*.pyc
+__pycache__/
+
+# Environment files
+**/.env
+
+# Logs
+*.log
+
+# IDE / Editor configs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# -----------------------------
+# Frontend / React
+# -----------------------------
+frontend/node_modules/
+frontend/build/
+frontend/.env
+
+# -----------------------------
+# Model / Large files
+# -----------------------------
 backend/mbert-sentiment-best/
 *.safetensors
 *.bin
 *.zip
+*.tar.gz
+
+# Hugging Face cache (optional, can be huge)
+~/.cache/huggingface/
+
+# -----------------------------
+# Misc / OS
+# -----------------------------
+.DS_Store
+Thumbs.db
+*.bak
+*.swp
