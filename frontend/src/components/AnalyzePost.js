@@ -16,7 +16,7 @@ const AnalyzePost = ({ setIsLoading, setError, setAnalysisResult, setPostText })
         setPostText('');
 
         try {
-            const apiPath = process.env.NODE_ENV === 'production' ? '/api/fetch_and_analyze' : 'https://fluffy-telegram-q74xx7gr9x6w2xwvw-5001.app.github.dev';
+            const apiPath = process.env.NODE_ENV === 'production' ? '/api/fetch_and_analyze' : 'https://fluffy-telegram-q74xx7gr9x6w2xwvw-5000.app.github.dev';
 
             const response = await axios.post(apiPath, { url: url });
             
