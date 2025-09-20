@@ -4,5 +4,5 @@ gunicorn
 boto3
 python-dotenv
 transformers
-torch==2.1.0+cpu
+torch==2.8.0
 requests
