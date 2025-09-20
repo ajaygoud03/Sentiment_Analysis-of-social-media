@@ -2,6 +2,9 @@
 flask
 flask-cors
 gunicorn
+s3transfer
+botocore
+boto3
 
 # Environment variables
 python-dotenv
