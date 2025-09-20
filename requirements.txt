@@ -1,17 +1,8 @@
-# Web framework
 flask
 flask-cors
 gunicorn
-s3transfer
-botocore
 boto3
-
-# Environment variables
 python-dotenv
-
-# AI/NLP
 transformers
-torch
-
-# Utilities
+torch==2.1.0+cpu
 requests

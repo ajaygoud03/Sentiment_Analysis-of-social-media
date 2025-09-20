@@ -1,7 +1,0 @@
-flask
-gunicorn
-transformers
-torch==2.5.1
-flask-cors
-python-dotenv
-requests                
