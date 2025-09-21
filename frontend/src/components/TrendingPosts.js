@@ -9,32 +9,35 @@ const TrendingPosts = () => {
     const [lastUpdated, setLastUpdated] = useState(null);
 
     const fetchTrends = useCallback(async () => {
-        if (!lastUpdated) setIsLoading(true);
+        setIsLoading(true);
         setError('');
 
         try {
-            // ✅ Always use backend URL from .env
-            const apiBase = process.env.REACT_APP_BACKEND_URL || "http://127.0.0.1:8080";
+            const apiBase = process.env.REACT_APP_BACKEND_URL;
+            if (!apiBase) throw new Error("REACT_APP_BACKEND_URL not set in .env");
+
             const response = await axios.get(`${apiBase}/api/trending`);
+            if (!Array.isArray(response.data)) throw new Error("Unexpected backend response");
+
             setTrends(response.data);
             setLastUpdated(new Date());
         } catch (err) {
             console.error("Error fetching trends:", err);
-            setError(err.response?.data?.error || 'Could not load trends.');
+            setError(err.response?.data?.error || err.message || 'Could not load trends.');
         } finally {
             setIsLoading(false);
         }
-    }, [lastUpdated]);
+    }, []);
 
     useEffect(() => {
         fetchTrends();
-        const intervalId = setInterval(fetchTrends, 300000); // every 5 minutes
+        const intervalId = setInterval(fetchTrends, 300000); // every 5 min
         return () => clearInterval(intervalId);
     }, [fetchTrends]);
 
     return (
-        <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="card" style={{ padding: '20px', borderRadius: '10px', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <h2>Live Posts from X</h2>
                 {lastUpdated && (
                     <span style={{ fontSize: '0.8rem', color: '#505f79' }}>
@@ -42,12 +45,15 @@ const TrendingPosts = () => {
                     </span>
                 )}
             </div>
+
             {isLoading ? (
                 <p>Loading posts...</p>
             ) : error ? (
                 <p style={{ color: '#bf2600' }}>{error}</p>
+            ) : trends.length === 0 ? (
+                <p>No trending posts found.</p>
             ) : (
-                <ul>
+                <ul style={{ padding: 0, margin: 0 }}>
                     {trends.map((trend, index) => (
                         <li
                             key={index}
@@ -58,7 +64,11 @@ const TrendingPosts = () => {
                                 listStyle: 'none',
                             }}
                         >
-                            {trend}
+                            <div><strong>Sentiment:</strong> {trend.sentiment}</div>
+                            <div>{trend.text}</div>
+                            <div style={{ fontSize: '0.8rem', color: '#505f79' }}>
+                                Score: {trend.score?.toFixed(2) ?? 'N/A'}
+                            </div>
                         </li>
                     ))}
                 </ul>
