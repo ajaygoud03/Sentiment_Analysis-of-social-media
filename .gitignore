@@ -52,3 +52,7 @@ backend/mbert-sentiment-best/
 Thumbs.db
 *.bak
 *.swp
+backend/mbert-sentiment-best/
+*.safetensors
+*.bin
+*.zip
