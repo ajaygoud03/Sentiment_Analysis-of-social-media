@@ -7,8 +7,9 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 from dotenv import load_dotenv
+from datetime import datetime
 
-# Load .env for local dev (Cloud Run will provide env vars via secrets)
+# Load .env for local dev (Cloud Run / Render provide env vars)
 load_dotenv()
 
 app = Flask(__name__, static_folder="../frontend/build", static_url_path="/")
@@ -19,7 +20,7 @@ AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 AWS_REGION = os.getenv("AWS_REGION", "eu-north-1")
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
-MODEL_KEY = os.getenv("MODEL_KEY", "mbert-sentiment-best")  # prefix in bucket (no leading slash)
+MODEL_KEY = os.getenv("MODEL_KEY", "mbert-sentiment-best")
 X_BEARER_TOKEN = os.getenv("X_BEARER_TOKEN")
 
 print("🔍 Debug ENV:")
@@ -30,24 +31,15 @@ print("S3_BUCKET_NAME:", S3_BUCKET_NAME)
 print("MODEL_KEY:", MODEL_KEY)
 print("X_BEARER_TOKEN:", "SET" if X_BEARER_TOKEN else "MISSING")
 
-# Basic checks (fail early in dev)
 if not X_BEARER_TOKEN:
     raise ValueError("Missing X_BEARER_TOKEN in environment (set for Twitter API)")
 
-# Helper label mapping (customize to your model labels)
+# Helper label mapping
 LABEL_MAP = {"LABEL_0": "Negative", "LABEL_1": "Neutral", "LABEL_2": "Positive"}
 def human_label(label):
     return LABEL_MAP.get(label, label)
 
-# --- Fallback / Cache ---
-FALLBACK_POSTS = [
-    "Welcome to Live Posts!",
-    "Trending posts will appear here when available.",
-    "Stay tuned for the latest updates."
-]
-CACHE = []  # last successful Twitter API response
-
-# --- S3 Model Download ---
+# --- Load model from S3 ---
 def download_model_from_s3():
     if not all([AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_BUCKET_NAME, MODEL_KEY]):
         raise ValueError("Missing AWS creds / bucket / MODEL_KEY env vars")
@@ -79,7 +71,6 @@ def download_model_from_s3():
     print("📂 Files:", os.listdir(tmp_dir))
     return tmp_dir
 
-# Load model (at container start)
 sentiment_pipeline = None
 try:
     model_dir = download_model_from_s3()
@@ -91,10 +82,12 @@ except Exception as e:
     print("❌ Error loading model from S3:", e)
     sentiment_pipeline = None
 
-# --- Routes ---
+# --- Trending Cache ---
+LAST_TRENDING = {"timestamp": None, "posts": []}
+
+# Routes
 @app.route("/", methods=["GET"])
 def home():
-    # serve frontend if present
     index = os.path.join(os.path.dirname(__file__), "..", "frontend", "build", "index.html")
     if os.path.exists(index):
         return send_from_directory(os.path.dirname(index), "index.html")
@@ -102,10 +95,8 @@ def home():
 
 @app.route("/api/trending", methods=["GET"])
 def get_trending_posts():
-    global CACHE
+    global LAST_TRENDING
     limit = int(request.args.get("limit", 10))
-    limit = min(limit, 10)  # enforce max_results <= 10
-
     url = "https://api.twitter.com/2/tweets/search/recent"
     query = "(#news OR #breaking) lang:en -is:retweet"
     params = {"query": query, "max_results": limit, "tweet.fields": "text,id"}
@@ -117,13 +108,9 @@ def get_trending_posts():
         data = r.json()
         posts = [t["text"] for t in data.get("data", [])]
 
-        # If Twitter returns no data, fallback to last cache or default
         if not posts:
-            posts = CACHE or FALLBACK_POSTS
-        else:
-            CACHE = posts  # update cache
+            posts = LAST_TRENDING["posts"] or ["No trending posts available."]
 
-        # Sentiment analysis if model loaded
         if sentiment_pipeline:
             preds = sentiment_pipeline(posts)
             results = []
@@ -133,17 +120,22 @@ def get_trending_posts():
                     "sentiment": human_label(p.get("label")),
                     "score": float(p.get("score", 0.0))
                 })
-            return jsonify(results)
         else:
-            return jsonify([{"text": t} for t in posts])
+            results = [{"text": t} for t in posts]
 
-    except requests.exceptions.RequestException as e:
-        print("❌ Twitter API request error:", e)
+        # Cache latest successful response
+        LAST_TRENDING = {"timestamp": datetime.utcnow(), "posts": posts}
+        return jsonify(results)
+
+    except requests.exceptions.HTTPError as e:
+        # 429 or other HTTP errors → serve cached posts
+        print("❌ Twitter API HTTP Error:", e)
+        cached_posts = LAST_TRENDING["posts"] or ["No trending posts available."]
+        return jsonify([{"text": t} for t in cached_posts])
     except Exception as e:
-        print("❌ Unexpected error:", e)
-
-    # On any error, return cache or fallback
-    return jsonify([{"text": t} for t in (CACHE or FALLBACK_POSTS)])
+        print("❌ Twitter API failed:", e)
+        cached_posts = LAST_TRENDING["posts"] or ["No trending posts available."]
+        return jsonify([{"text": t} for t in cached_posts])
 
 @app.route("/api/fetch_and_analyze", methods=["POST"])
 def fetch_and_analyze():
