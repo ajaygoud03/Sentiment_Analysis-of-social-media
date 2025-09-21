@@ -148,4 +148,4 @@ def fetch_and_analyze():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     print("Starting local Flask on port", port)
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=8080, debug=True)
