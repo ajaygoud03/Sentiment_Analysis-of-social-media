@@ -22,6 +22,15 @@ S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
 MODEL_KEY = os.getenv("MODEL_KEY", "mbert-sentiment-best")  # prefix in bucket (no leading slash)
 X_BEARER_TOKEN = os.getenv("X_BEARER_TOKEN")
 
+print("🔍 Debug ENV:")
+print("AWS_ACCESS_KEY_ID:", bool(AWS_ACCESS_KEY_ID))
+print("AWS_SECRET_ACCESS_KEY:", "SET" if AWS_SECRET_ACCESS_KEY else "MISSING")
+print("AWS_REGION:", AWS_REGION)
+print("S3_BUCKET_NAME:", S3_BUCKET_NAME)
+print("MODEL_KEY:", MODEL_KEY)
+print("X_BEARER_TOKEN:", "SET" if X_BEARER_TOKEN else "MISSING")
+
+
 # Basic checks (fail early in dev)
 if not X_BEARER_TOKEN:
     raise ValueError("Missing X_BEARER_TOKEN in environment (set for Twitter API)")
