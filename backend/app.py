@@ -30,7 +30,6 @@ print("S3_BUCKET_NAME:", S3_BUCKET_NAME)
 print("MODEL_KEY:", MODEL_KEY)
 print("X_BEARER_TOKEN:", "SET" if X_BEARER_TOKEN else "MISSING")
 
-
 # Basic checks (fail early in dev)
 if not X_BEARER_TOKEN:
     raise ValueError("Missing X_BEARER_TOKEN in environment (set for Twitter API)")
@@ -40,6 +39,15 @@ LABEL_MAP = {"LABEL_0": "Negative", "LABEL_1": "Neutral", "LABEL_2": "Positive"}
 def human_label(label):
     return LABEL_MAP.get(label, label)
 
+# --- Fallback / Cache ---
+FALLBACK_POSTS = [
+    "Welcome to Live Posts!",
+    "Trending posts will appear here when available.",
+    "Stay tuned for the latest updates."
+]
+CACHE = []  # last successful Twitter API response
+
+# --- S3 Model Download ---
 def download_model_from_s3():
     if not all([AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_BUCKET_NAME, MODEL_KEY]):
         raise ValueError("Missing AWS creds / bucket / MODEL_KEY env vars")
@@ -83,7 +91,7 @@ except Exception as e:
     print("❌ Error loading model from S3:", e)
     sentiment_pipeline = None
 
-# Routes
+# --- Routes ---
 @app.route("/", methods=["GET"])
 def home():
     # serve frontend if present
@@ -94,17 +102,28 @@ def home():
 
 @app.route("/api/trending", methods=["GET"])
 def get_trending_posts():
+    global CACHE
     limit = int(request.args.get("limit", 10))
+    limit = min(limit, 10)  # enforce max_results <= 10
+
     url = "https://api.twitter.com/2/tweets/search/recent"
     query = "(#news OR #breaking) lang:en -is:retweet"
     params = {"query": query, "max_results": limit, "tweet.fields": "text,id"}
     headers = {"Authorization": f"Bearer {X_BEARER_TOKEN}"}
 
     try:
-        r = requests.get(url, headers=headers, params=params, timeout=15)
+        r = requests.get(url, headers=headers, params=params, timeout=10)
         r.raise_for_status()
         data = r.json()
         posts = [t["text"] for t in data.get("data", [])]
+
+        # If Twitter returns no data, fallback to last cache or default
+        if not posts:
+            posts = CACHE or FALLBACK_POSTS
+        else:
+            CACHE = posts  # update cache
+
+        # Sentiment analysis if model loaded
         if sentiment_pipeline:
             preds = sentiment_pipeline(posts)
             results = []
@@ -117,9 +136,14 @@ def get_trending_posts():
             return jsonify(results)
         else:
             return jsonify([{"text": t} for t in posts])
+
+    except requests.exceptions.RequestException as e:
+        print("❌ Twitter API request error:", e)
     except Exception as e:
-        print("❌ Error fetching trends:", e)
-        return jsonify({"error": "Could not fetch recent posts", "details": str(e)}), 500
+        print("❌ Unexpected error:", e)
+
+    # On any error, return cache or fallback
+    return jsonify([{"text": t} for t in (CACHE or FALLBACK_POSTS)])
 
 @app.route("/api/fetch_and_analyze", methods=["POST"])
 def fetch_and_analyze():
@@ -148,4 +172,4 @@ def fetch_and_analyze():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     print("Starting local Flask on port", port)
-    app.run(host="0.0.0.0", port=8080, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=True)
